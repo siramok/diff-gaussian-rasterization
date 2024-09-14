@@ -26,6 +26,7 @@ namespace FORWARD
 		const glm::vec3* scales,
 		const float scale_modifier,
 		const glm::vec4* rotations,
+		const float* values,
 		const float* opacities,
 		const float* shs,
 		bool* clamped,
@@ -59,7 +60,9 @@ namespace FORWARD
 		float* final_T,
 		uint32_t* n_contrib,
 		const float* bg_color,
-		float* out_color);
+		float* out_color,
+		float* depths,
+		float* depth);
 }
 
 
