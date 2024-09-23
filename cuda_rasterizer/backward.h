@@ -41,10 +41,9 @@ namespace BACKWARD
 		float* dL_dinvdepths);
 
 	void preprocess(
-		int P, int D, int M,
+		int P,
 		const float3* means,
 		const int* radii,
-		const float* shs,
 		const bool* clamped,
 		const float* opacities,
 		const glm::vec3* scales,

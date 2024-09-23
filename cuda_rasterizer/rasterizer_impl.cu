@@ -199,11 +199,10 @@ int CudaRasterizer::Rasterizer::forward(
 	std::function<char* (size_t)> geometryBuffer,
 	std::function<char* (size_t)> binningBuffer,
 	std::function<char* (size_t)> imageBuffer,
-	const int P, int D, int M,
+	const int P,
 	const float* background,
 	const int width, int height,
 	const float* means3D,
-	const float* shs,
 	const float* colors_precomp,
 	const float* opacities,
 	const float* scales,
@@ -248,14 +247,13 @@ int CudaRasterizer::Rasterizer::forward(
 
 	// Run preprocessing per-Gaussian (transformation, bounding, conversion of SHs to RGB)
 	CHECK_CUDA(FORWARD::preprocess(
-		P, D, M,
+		P,
 		means3D,
 		(glm::vec3*)scales,
 		scale_modifier,
 		(glm::vec4*)rotations,
 		values,
 		opacities,
-		shs,
 		geomState.clamped,
 		cov3D_precomp,
 		colors_precomp,
@@ -343,11 +341,10 @@ int CudaRasterizer::Rasterizer::forward(
 // Produce necessary gradients for optimization, corresponding
 // to forward render pass
 void CudaRasterizer::Rasterizer::backward(
-	const int P, int D, int M, int R,
+	const int P, int R,
 	const float* background,
 	const int width, int height,
 	const float* means3D,
-	const float* shs,
 	const float* colors_precomp,
 	const float* opacities,
 	const float* scales,
@@ -395,7 +392,7 @@ void CudaRasterizer::Rasterizer::backward(
 
 	// Compute loss gradients w.r.t. 2D mean position, conic matrix,
 	// opacity and RGB of Gaussians from per-pixel loss gradients.
-	// If we were given precomputed colors and not SHs, use them.
+	// If we were given precomputed colors and not values, use them.
 	const float* color_ptr = (colors_precomp != nullptr) ? colors_precomp : geomState.rgb;
 	CHECK_CUDA(BACKWARD::render(
 		tile_grid,
@@ -422,10 +419,9 @@ void CudaRasterizer::Rasterizer::backward(
 	// given to us or a scales/rot pair? If precomputed, pass that. If not,
 	// use the one we computed ourselves.
 	const float* cov3D_ptr = (cov3D_precomp != nullptr) ? cov3D_precomp : geomState.cov3D;
-	CHECK_CUDA(BACKWARD::preprocess(P, D, M,
+	CHECK_CUDA(BACKWARD::preprocess(P,
 		(float3*)means3D,
 		radii,
-		shs,
 		geomState.clamped,
 		opacities,
 		(glm::vec3*)scales,

@@ -82,8 +82,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.tanfovy,
             raster_settings.image_height,
             raster_settings.image_width,
-            sh,
-            raster_settings.sh_degree,
             raster_settings.campos,
             raster_settings.prefiltered,
             raster_settings.debug,
@@ -152,8 +150,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.tanfovy,
             grad_out_color,
             grad_out_depth,
-            sh,
-            raster_settings.sh_degree,
             raster_settings.campos,
             geomBuffer,
             num_rendered,
@@ -200,7 +196,6 @@ class GaussianRasterizationSettings(NamedTuple):
     scale_modifier: float
     viewmatrix: torch.Tensor
     projmatrix: torch.Tensor
-    sh_degree: int
     campos: torch.Tensor
     prefiltered: bool
     debug: bool
@@ -249,6 +244,11 @@ class GaussianRasterizer(nn.Module):
             raise Exception(
                 "Please provide exactly one of either scale/rotation pair or precomputed 3D covariance!"
             )
+        
+        if (values is None):
+            raise Exception(
+                "Please provide scalar values for each Gaussian!"
+            )
 
         if shs is None:
             shs = torch.Tensor([])
@@ -261,8 +261,6 @@ class GaussianRasterizer(nn.Module):
             rotations = torch.Tensor([])
         if cov3D_precomp is None:
             cov3D_precomp = torch.Tensor([])
-        if values is None:
-            values = torch.Tensor([])
 
         # Invoke C++/CUDA rasterization routine
         return rasterize_gaussians(
