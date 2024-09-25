@@ -20,12 +20,12 @@ __device__ __forceinline__ float sq(float x) { return x * x; }
 
 // Backward pass for conversion of values to RGB for
 // each Gaussian.
-__device__ void computeColorFromValues(int idx, const bool* clamped, const glm::vec3* dL_dcolor, float* dL_dvalues)
+__device__ void computeColorFromValues(int idx, const float* values, const bool* clamped, const glm::vec3* dL_dcolor, float* dL_dvalues)
 {
 	// In the forward pass, we had: 
 	// RGB = vec3(1.0, 0.0, 0.0) * value + vec3(0.0, 0.0, 1.0)
     // So dRGB/dvalue = vec3(1.0, 0.0, 0.0)
-    glm::vec3 dRGB_dvalue = glm::vec3(1.0, 0.0, 0.0);
+    // glm::vec3 dRGB_dvalue = glm::vec3(1.0, 0.0, 0.0);
 
 	// Use PyTorch rule for clamping: if clamping was applied,
 	// gradient becomes 0.
@@ -33,6 +33,25 @@ __device__ void computeColorFromValues(int idx, const bool* clamped, const glm::
 	dL_dRGB.x *= clamped[3 * idx + 0] ? 0 : 1;
 	dL_dRGB.y *= clamped[3 * idx + 1] ? 0 : 1;
 	dL_dRGB.z *= clamped[3 * idx + 2] ? 0 : 1;
+
+	float value = values[idx];
+    glm::vec3 dRGB_dvalue(0.0f);
+
+    // Compute dRGB/dvalue based on which piece of the function applies
+    if (value < 0.0f || value > 1.0f) {
+        // gradient is zero if value is clamped
+        dRGB_dvalue = glm::vec3(0.0f);
+    } else if (value <= 0.2f) {  // red to yellow
+        dRGB_dvalue = glm::vec3(0.0f, 5.0f, 0.0f);
+    } else if (value <= 0.4f) {  // yellow to green
+        dRGB_dvalue = glm::vec3(-5.0f, 0.0f, 0.0f);
+    } else if (value <= 0.6f) {  // green to cyan
+        dRGB_dvalue = glm::vec3(0.0f, 0.0f, 5.0f);
+    } else if (value <= 0.8f) {  // cyan to blue
+        dRGB_dvalue = glm::vec3(0.0f, -5.0f, 0.0f);
+    } else {  // blue to pink
+        dRGB_dvalue = glm::vec3(5.0f, 0.0f, 0.0f);
+    }
 
     // Compute dL/dvalue using the chain rule
     float dL_dvalue = 
@@ -340,7 +359,7 @@ __global__ void preprocessCUDA(
 
 	// Compute gradient updates due to computing colors from values
 	if (values)
-		computeColorFromValues(idx, clamped, (glm::vec3*)dL_dcolor, dL_dvalue);
+		computeColorFromValues(idx, values, clamped, (glm::vec3*)dL_dcolor, dL_dvalue);
 
 	// Compute gradient updates due to computing covariance from scale/rotation
 	if (scales)

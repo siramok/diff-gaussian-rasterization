@@ -23,6 +23,30 @@ __device__ glm::vec3 computeColorFromValues(int idx, const float* values, bool* 
 	// assume values clamped to [0,1]
 	glm::vec3 result = values[idx] * glm::vec3(1.0, 0.0, 0.0) + glm::vec3(0.0, 0.0, 1.0);
 
+	// Test rainbow (red, yellow, green, cyan, blue, pink)
+	float value = glm::clamp(float(values[idx]), 0.0f, 1.0f);
+    if (value <= 0.2) {  // red to yellow
+        result.r = 1.0;
+        result.g = value * 5;
+        result.b = 0;
+    } else if (value <= 0.4) {  // yellow to green
+        result.r = (0.4 - value) * 5;
+        result.g = 1.0;
+        result.b = 0;
+    } else if (value <= 0.6) {  // green to cyan
+        result.r = 0;
+        result.g = 1.0;
+        result.b = (value - 0.4) * 5;
+    } else if (value <= 0.8) {  // cyan to blue
+        result.r = 0;
+        result.g = (0.8 - value) * 5;
+        result.b = 1.0;
+    } else {  // blue to pink
+        result.r = (value - 0.8) * 5;
+        result.g = 0;
+        result.b = 1.0;
+    }
+
 	// RGB colors are clamped to [0,1]. If values are
 	// clamped, we need to keep track of this for the backward pass.
 	clamped[3 * idx + 0] = (result.x < 0) || (result.x > 1.0);
