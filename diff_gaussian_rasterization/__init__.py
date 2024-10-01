@@ -26,8 +26,6 @@ def cpu_deep_copy_tuple(input_tuple):
 def rasterize_gaussians(
     means3D,
     means2D,
-    sh,
-    colors_precomp,
     opacities,
     scales,
     rotations,
@@ -207,8 +205,6 @@ class GaussianRasterizer(nn.Module):
         means3D,
         means2D,
         opacities,
-        shs=None,
-        colors_precomp=None,
         scales=None,
         rotations=None,
         values=None,
@@ -229,11 +225,6 @@ class GaussianRasterizer(nn.Module):
                 "Please provide scalar values for each Gaussian!"
             )
 
-        if shs is None:
-            shs = torch.Tensor([])
-        if colors_precomp is None:
-            colors_precomp = torch.Tensor([])
-
         if scales is None:
             scales = torch.Tensor([])
         if rotations is None:
@@ -245,8 +236,6 @@ class GaussianRasterizer(nn.Module):
         return rasterize_gaussians(
             means3D,
             means2D,
-            shs,
-            colors_precomp,
             opacities,
             scales,
             rotations,
