@@ -328,7 +328,6 @@ __global__ void preprocessCUDA(
 	glm::vec3* dL_dmeans,
 	float* dL_dcolor,
 	float* dL_dcov3D,
-	float* dL_dsh,
 	glm::vec3* dL_dscale,
 	glm::vec4* dL_drot,
 	float* dL_dvalue,
@@ -578,7 +577,6 @@ void BACKWARD::preprocess(
 	glm::vec3* dL_dmean3D,
 	float* dL_dcolor,
 	float* dL_dcov3D,
-	float* dL_dsh,
 	glm::vec3* dL_dscale,
 	glm::vec4* dL_drot,
 	float* dL_dvalue)
@@ -622,7 +620,6 @@ void BACKWARD::preprocess(
 		(glm::vec3*)dL_dmean3D,
 		dL_dcolor,
 		dL_dcov3D,
-		dL_dsh,
 		dL_dscale,
 		dL_drot,
 		dL_dvalue,

@@ -245,7 +245,7 @@ int CudaRasterizer::Rasterizer::forward(
 		throw std::runtime_error("For non-RGB, provide precomputed Gaussian colors!");
 	}
 
-	// Run preprocessing per-Gaussian (transformation, bounding, conversion of SHs to RGB)
+	// Run preprocessing per-Gaussian (transformation, bounding, conversion of values to RGB)
 	CHECK_CUDA(FORWARD::preprocess(
 		P,
 		means3D,
@@ -369,7 +369,6 @@ void CudaRasterizer::Rasterizer::backward(
 	float* dL_dinvdepth,
 	float* dL_dmean3D,
 	float* dL_dcov3D,
-	float* dL_dsh,
 	float* dL_dscale,
 	float* dL_drot,
 	float* dL_dvalue,
@@ -441,7 +440,6 @@ void CudaRasterizer::Rasterizer::backward(
 		(glm::vec3*)dL_dmean3D,
 		dL_dcolor,
 		dL_dcov3D,
-		dL_dsh,
 		(glm::vec3*)dL_dscale,
 		(glm::vec4*)dL_drot,
 		dL_dvalue), debug);
