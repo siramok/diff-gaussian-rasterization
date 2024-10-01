@@ -38,8 +38,6 @@ def rasterize_gaussians(
     return _RasterizeGaussians.apply(
         means3D,
         means2D,
-        sh,
-        colors_precomp,
         opacities,
         scales,
         rotations,
@@ -55,8 +53,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         ctx,
         means3D,
         means2D,
-        sh,
-        colors_precomp,
         opacities,
         scales,
         rotations,
@@ -69,7 +65,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         args = (
             raster_settings.bg,
             means3D,
-            colors_precomp,
             opacities,
             scales,
             rotations,
@@ -96,7 +91,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         ctx.raster_settings = raster_settings
         ctx.num_rendered = num_rendered
         ctx.save_for_backward(
-            colors_precomp,
             means3D,
             scales,
             rotations,
@@ -117,7 +111,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         num_rendered = ctx.num_rendered
         raster_settings = ctx.raster_settings
         (
-            colors_precomp,
             means3D,
             scales,
             rotations,
@@ -135,7 +128,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.bg,
             means3D,
             radii,
-            colors_precomp,
             opacities,
             scales,
             rotations,
@@ -159,11 +151,9 @@ class _RasterizeGaussians(torch.autograd.Function):
         # Compute gradients for relevant tensors by invoking backward method
         (
             grad_means2D,
-            grad_colors_precomp,
             grad_opacities,
             grad_means3D,
             grad_cov3Ds_precomp,
-            grad_sh,
             grad_scales,
             grad_rotations,
             grad_values,
@@ -172,8 +162,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         grads = (
             grad_means3D,
             grad_means2D,
-            grad_sh,
-            grad_colors_precomp,
             grad_opacities,
             grad_scales,
             grad_rotations,
@@ -228,13 +216,6 @@ class GaussianRasterizer(nn.Module):
     ):
 
         raster_settings = self.raster_settings
-
-        if (shs is None and colors_precomp is None) or (
-            shs is not None and colors_precomp is not None
-        ):
-            raise Exception(
-                "Please provide excatly one of either SHs or precomputed colors!"
-            )
 
         if ((scales is None or rotations is None) and cov3D_precomp is None) or (
             (scales is not None or rotations is not None) and cov3D_precomp is not None

@@ -203,7 +203,6 @@ int CudaRasterizer::Rasterizer::forward(
 	const float* background,
 	const int width, int height,
 	const float* means3D,
-	const float* colors_precomp,
 	const float* opacities,
 	const float* scales,
 	const float scale_modifier,
@@ -240,11 +239,6 @@ int CudaRasterizer::Rasterizer::forward(
 	char* img_chunkptr = imageBuffer(img_chunk_size);
 	ImageState imgState = ImageState::fromChunk(img_chunkptr, width * height);
 
-	if (NUM_CHANNELS != 3 && colors_precomp == nullptr)
-	{
-		throw std::runtime_error("For non-RGB, provide precomputed Gaussian colors!");
-	}
-
 	// Run preprocessing per-Gaussian (transformation, bounding, conversion of values to RGB)
 	CHECK_CUDA(FORWARD::preprocess(
 		P,
@@ -256,7 +250,6 @@ int CudaRasterizer::Rasterizer::forward(
 		opacities,
 		geomState.clamped,
 		cov3D_precomp,
-		colors_precomp,
 		viewmatrix, projmatrix,
 		(glm::vec3*)cam_pos,
 		width, height,
@@ -319,7 +312,7 @@ int CudaRasterizer::Rasterizer::forward(
 	CHECK_CUDA(, debug)
 
 	// Let each tile blend its range of Gaussians independently in parallel
-	const float* feature_ptr = colors_precomp != nullptr ? colors_precomp : geomState.rgb;
+	const float* feature_ptr = geomState.rgb;
 	CHECK_CUDA(FORWARD::render(
 		tile_grid, block,
 		imgState.ranges,
@@ -345,7 +338,6 @@ void CudaRasterizer::Rasterizer::backward(
 	const float* background,
 	const int width, int height,
 	const float* means3D,
-	const float* colors_precomp,
 	const float* opacities,
 	const float* scales,
 	const float scale_modifier,
@@ -390,9 +382,8 @@ void CudaRasterizer::Rasterizer::backward(
 	const dim3 block(BLOCK_X, BLOCK_Y, 1);
 
 	// Compute loss gradients w.r.t. 2D mean position, conic matrix,
-	// opacity and RGB of Gaussians from per-pixel loss gradients.
-	// If we were given precomputed colors and not values, use them.
-	const float* color_ptr = (colors_precomp != nullptr) ? colors_precomp : geomState.rgb;
+	// opacity and value of Gaussians from per-pixel loss gradients.
+	const float* color_ptr = geomState.rgb;
 	CHECK_CUDA(BACKWARD::render(
 		tile_grid,
 		block,
