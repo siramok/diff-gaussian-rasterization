@@ -72,7 +72,6 @@ __global__ void computeCov2DCUDA(int P,
 	const float h_x, float h_y,
 	const float tan_fovx, float tan_fovy,
 	const float* view_matrix,
-	const float* opacities,
 	const float* dL_dconics,
 	float* dL_dopacity,
 	const float* dL_dinvdepth,
@@ -133,7 +132,7 @@ __global__ void computeCov2DCUDA(int P,
 	const float det_cov_plus_h_cov = c_xx * c_yy - c_xy * c_xy;
 	const float h_convolution_scaling = sqrt(max(0.000025f, det_cov / det_cov_plus_h_cov)); // max for numerical stability
 	const float dL_dopacity_v = dL_dopacity[idx];
-	const float d_h_convolution_scaling = dL_dopacity_v * opacities[idx];
+	const float d_h_convolution_scaling = dL_dopacity_v * OPACITY;
 	dL_dopacity[idx] = dL_dopacity_v * h_convolution_scaling;
 	const float d_inside_root = (det_cov / det_cov_plus_h_cov) <= 0.000025f ? 0.f : d_h_convolution_scaling / (2 * h_convolution_scaling);
 #else
@@ -559,7 +558,6 @@ void BACKWARD::preprocess(
 	const float3* means3D,
 	const int* radii,
 	const bool* clamped,
-	const float* opacities,
 	const glm::vec3* scales,
 	const glm::vec4* rotations,
 	const float* values,
@@ -595,7 +593,6 @@ void BACKWARD::preprocess(
 		tan_fovx,
 		tan_fovy,
 		viewmatrix,
-		opacities,
 		dL_dconic,
 		dL_dopacity,
 		dL_dinvdepth,

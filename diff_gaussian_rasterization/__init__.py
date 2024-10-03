@@ -26,7 +26,6 @@ def cpu_deep_copy_tuple(input_tuple):
 def rasterize_gaussians(
     means3D,
     means2D,
-    opacities,
     scales,
     rotations,
     values,
@@ -36,7 +35,6 @@ def rasterize_gaussians(
     return _RasterizeGaussians.apply(
         means3D,
         means2D,
-        opacities,
         scales,
         rotations,
         values,
@@ -51,7 +49,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         ctx,
         means3D,
         means2D,
-        opacities,
         scales,
         rotations,
         values,
@@ -63,7 +60,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         args = (
             raster_settings.bg,
             means3D,
-            opacities,
             scales,
             rotations,
             values,
@@ -95,7 +91,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             values,
             cov3Ds_precomp,
             radii,
-            opacities,
             geomBuffer,
             binningBuffer,
             imgBuffer,
@@ -115,7 +110,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             values,
             cov3Ds_precomp,
             radii,
-            opacities,
             geomBuffer,
             binningBuffer,
             imgBuffer,
@@ -126,7 +120,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.bg,
             means3D,
             radii,
-            opacities,
             scales,
             rotations,
             values,
@@ -149,7 +142,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         # Compute gradients for relevant tensors by invoking backward method
         (
             grad_means2D,
-            grad_opacities,
             grad_means3D,
             grad_cov3Ds_precomp,
             grad_scales,
@@ -160,7 +152,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         grads = (
             grad_means3D,
             grad_means2D,
-            grad_opacities,
             grad_scales,
             grad_rotations,
             grad_values,
@@ -204,7 +195,6 @@ class GaussianRasterizer(nn.Module):
         self,
         means3D,
         means2D,
-        opacities,
         scales=None,
         rotations=None,
         values=None,
@@ -236,7 +226,6 @@ class GaussianRasterizer(nn.Module):
         return rasterize_gaussians(
             means3D,
             means2D,
-            opacities,
             scales,
             rotations,
             values,
