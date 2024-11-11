@@ -15,39 +15,9 @@
 #include "config.h"
 #include "stdio.h"
 
-#define BLOCK_SIZE (BLOCK_X * BLOCK_Y)
+#define BLOCK_SIZE (BLOCK_X * BLOCK_Y * BLOCK_Z)
 #define NUM_WARPS (BLOCK_SIZE/32)
 #define DGR_FIX_AA
-
-__forceinline__ __device__ float ndc2Pix(float v, int S)
-{
-	return ((v + 1.0) * S - 1.0) * 0.5;
-}
-
-__forceinline__ __device__ void getRect(const float2 p, int max_radius, uint2& rect_min, uint2& rect_max, dim3 grid)
-{
-	rect_min = {
-		min(grid.x, max((int)0, (int)((p.x - max_radius) / BLOCK_X))),
-		min(grid.y, max((int)0, (int)((p.y - max_radius) / BLOCK_Y)))
-	};
-	rect_max = {
-		min(grid.x, max((int)0, (int)((p.x + max_radius + BLOCK_X - 1) / BLOCK_X))),
-		min(grid.y, max((int)0, (int)((p.y + max_radius + BLOCK_Y - 1) / BLOCK_Y)))
-	};
-}
-
-__forceinline__ __device__ void getRect(const float2 p, int2 ext_rect, uint2& rect_min, uint2& rect_max, dim3 grid)
-{
-	rect_min = {
-		min(grid.x, max((int)0, (int)((p.x - ext_rect.x) / BLOCK_X))),
-		min(grid.y, max((int)0, (int)((p.y - ext_rect.y) / BLOCK_Y)))
-	};
-	rect_max = {
-		min(grid.x, max((int)0, (int)((p.x + ext_rect.x + BLOCK_X - 1) / BLOCK_X))),
-		min(grid.y, max((int)0, (int)((p.y + ext_rect.y + BLOCK_Y - 1) / BLOCK_Y)))
-	};
-}
-
 
 __forceinline__ __device__ float3 transformPoint4x3(const float3& p, const float* matrix)
 {
@@ -128,33 +98,6 @@ __forceinline__ __device__ float4 dnormvdv(float4 v, float4 dv)
 __forceinline__ __device__ float sigmoid(float x)
 {
 	return 1.0f / (1.0f + expf(-x));
-}
-
-__forceinline__ __device__ bool in_frustum(int idx,
-	const float* orig_points,
-	const float* viewmatrix,
-	const float* projmatrix,
-	bool prefiltered,
-	float3& p_view)
-{
-	float3 p_orig = { orig_points[3 * idx], orig_points[3 * idx + 1], orig_points[3 * idx + 2] };
-
-	// Bring points to screen space
-	float4 p_hom = transformPoint4x4(p_orig, projmatrix);
-	float p_w = 1.0f / (p_hom.w + 0.0000001f);
-	float3 p_proj = { p_hom.x * p_w, p_hom.y * p_w, p_hom.z * p_w };
-	p_view = transformPoint4x3(p_orig, viewmatrix);
-
-	if (p_view.z <= 0.2f)// || ((p_proj.x < -1.3 || p_proj.x > 1.3 || p_proj.y < -1.3 || p_proj.y > 1.3)))
-	{
-		if (prefiltered)
-		{
-			printf("Point is filtered although prefiltered is set. This shouldn't happen!");
-			__trap();
-		}
-		return false;
-	}
-	return true;
 }
 
 #define CHECK_CUDA(A, debug) \

@@ -13,8 +13,9 @@
 #define CUDA_RASTERIZER_CONFIG_H_INCLUDED
 
 #define NUM_CHANNELS 3 // Default 3, RGB
-#define BLOCK_X 16
-#define BLOCK_Y 16
+#define BLOCK_X 1
+#define BLOCK_Y 1
+#define BLOCK_Z 1
 #define OPACITY 0.01
 
 #endif

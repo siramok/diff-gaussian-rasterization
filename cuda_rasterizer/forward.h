@@ -21,45 +21,41 @@
 namespace FORWARD
 {
 	// Perform initial steps for each Gaussian prior to rasterization.
-	void preprocess(int P,
-		const float* orig_points,
+	void preprocess(
+		int P,
+		const float* means3D,
 		const glm::vec3* scales,
 		const float scale_modifier,
 		const glm::vec4* rotations,
 		const float* values,
 		bool* clamped,
-		const float* cov3D_precomp,
-		const float* viewmatrix,
-		const float* projmatrix,
-		const glm::vec3* cam_pos,
-		const int W, int H,
-		const float focal_x, float focal_y,
-		const float tan_fovx, float tan_fovy,
+		const float3 volume_mins,
+		const float3 volume_maxes,
+		const uint3 num_cells,
+		const float cell_size,
 		int* radii,
-		float2* points_xy_image,
-		float* depths,
-		float* cov3Ds,
-		float* colors,
-		float4* conic_opacity,
+		float3* means,
+		float* values_out, float* volumes,
+		float* conic,
+		uint* aabbs,
 		const dim3 grid,
-		uint32_t* tiles_touched,
-		bool prefiltered);
+		uint32_t* cells_touched);
 
 	// Main rasterization method.
 	void render(
 		const dim3 grid, dim3 block,
 		const uint2* ranges,
 		const uint32_t* point_list,
-		int W, int H,
-		const float2* points_xy_image,
-		const float* features,
-		const float4* conic_opacity,
-		float* final_T,
+		const float3 volume_mins,
+		const uint3 num_cells,
+		const float cell_size,
+		const float3* means,
+		const float* values,
+		const float* volumes,
+		const float* conic,
+		float* accumulated_weights,
 		uint32_t* n_contrib,
-		const float* bg_color,
-		float* out_color,
-		float* depths,
-		float* depth);
+		float* out_cells);
 }
 
 
