@@ -201,14 +201,16 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.cells_touched
 	), debug)
 
-	// int* host_cells_touched = new int[P];
-	// cudaMemcpy(host_cells_touched, geomState.cells_touched, P * sizeof(int), cudaMemcpyDeviceToHost);
-	// std::cout << "cells_touched:" << std::endl;
-	// for (int i = 0; i < 1000; ++i) {
-	// 	std::cout << host_cells_touched[i] << " ";
+	// if (debug) {
+	// 	int* host_cells_touched = new int[P];
+	// 	cudaMemcpy(host_cells_touched, geomState.cells_touched, P * sizeof(int), cudaMemcpyDeviceToHost);
+	// 	std::cout << "cells_touched:" << std::endl;
+	// 	for (int i = 0; i < 1000; ++i) {
+	// 		std::cout << host_cells_touched[i] << " ";
+	// 	}
+	// 	std::cout << std::endl;
+	// 	delete[] host_cells_touched;
 	// }
-	// std::cout << std::endl;
-	// delete[] host_cells_touched;
 
 	// uint* host_aabbs = new uint[P * 6];
 	// cudaMemcpy(host_aabbs, geomState.aabbs, P * 6 * sizeof(uint), cudaMemcpyDeviceToHost);
