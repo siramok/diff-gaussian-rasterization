@@ -140,6 +140,7 @@ __global__ void preprocessCUDA(int P,
 	const float scale_modifier,
 	const glm::vec4* rotations,
 	const float* values,
+	const float* opacities,
 	bool* clamped,
 	const float* cov3D_precomp,
 	const float* viewmatrix,
@@ -237,7 +238,7 @@ __global__ void preprocessCUDA(int P,
 	radii[idx] = my_radius;
 	points_xy_image[idx] = point_image;
 	// Inverse 2D covariance and opacity neatly pack into one float4
-	float opacity = OPACITY;
+	float opacity = opacities[idx];
 
 #ifdef DGR_FIX_AA
 	conic_opacity[idx] = { conic.x, conic.y, conic.z, opacity * h_convolution_scaling };
@@ -412,6 +413,7 @@ void FORWARD::preprocess(int P,
 	const float scale_modifier,
 	const glm::vec4* rotations,
 	const float* values,
+	const float* opacities,
 	bool* clamped,
 	const float* cov3D_precomp,
 	const float* viewmatrix,
@@ -437,6 +439,7 @@ void FORWARD::preprocess(int P,
 		scale_modifier,
 		rotations,
 		values,
+		opacities,
 		clamped,
 		cov3D_precomp,
 		viewmatrix, 
