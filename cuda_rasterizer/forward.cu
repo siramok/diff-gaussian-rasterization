@@ -15,6 +15,11 @@
 #include <cooperative_groups/reduce.h>
 namespace cg = cooperative_groups;
 
+// Helper function for linear interpolation
+__device__ inline float lerp(float a, float b, float t) {
+    return a + t * (b - a);
+}
+
 // Forward method for converting the values
 // of each Gaussian to a simple RGB color.
 __device__ glm::vec3 computeColorFromValues(
@@ -23,14 +28,21 @@ __device__ glm::vec3 computeColorFromValues(
     glm::vec3 result;
 
     float scalar_value = values[idx];
-    int colormap_index = min(max(int(scalar_value * (colormap_size - 1)), 0), colormap_size - 1);
+    float scaled_value = scalar_value * (colormap_size - 1);
+    
+    // Get the lower and upper indices for interpolation
+    int lower_idx = min(max(int(floor(scaled_value)), 0), colormap_size - 2);
+    int upper_idx = lower_idx + 1;
+    
+    // Calculate interpolation factor (0 to 1)
+    float frac = scaled_value - floor(scaled_value);
 
-    // Fetch RGB values from the colormap
-    result = {
-        colormap[colormap_index * 4 + 0], // R
-        colormap[colormap_index * 4 + 1], // G
-        colormap[colormap_index * 4 + 2]  // B
-    };
+    // Interpolation between colormap entries
+    result = glm::vec3(
+        lerp(colormap[lower_idx * 3 + 0], colormap[upper_idx * 3 + 0], frac),
+        lerp(colormap[lower_idx * 3 + 1], colormap[upper_idx * 3 + 1], frac),
+        lerp(colormap[lower_idx * 3 + 2], colormap[upper_idx * 3 + 2], frac)
+    );
 
     // RGB colors are clamped to [0,1]. If values are clamped, we need to keep track of this for the backward pass.
     clamped[3 * idx + 0] = (result.x < 0) || (result.x > 1.0);
@@ -39,7 +51,6 @@ __device__ glm::vec3 computeColorFromValues(
 
     return glm::clamp(result, 0.0f, 1.0f);
 }
-
 
 // Forward version of 2D covariance matrix computation
 __device__ float3 computeCov2D(const float3& mean, float focal_x, float focal_y, float tan_fovx, float tan_fovy, const float* cov3D, const float* viewmatrix)
