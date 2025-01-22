@@ -50,7 +50,8 @@ RasterizeGaussiansCUDA(
     const int image_width,
 	const torch::Tensor& campos,
 	const bool prefiltered,
-	const bool debug)
+	const bool debug,
+	const torch::Tensor& colormap)
 {
   if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
     AT_ERROR("means3D must have dimensions (num_points, 3)");
@@ -72,6 +73,10 @@ RasterizeGaussiansCUDA(
 
   torch::Tensor radii = torch::full({P}, 0, means3D.options().dtype(torch::kInt32));
   
+  // Prepare colormap pointer
+  const int colormap_size = colormap.size(0);
+  const float* colormap_ptr = colormap.data_ptr<float>();
+
   torch::Device device(torch::kCUDA);
   torch::TensorOptions options(torch::kByte);
   torch::Tensor geomBuffer = torch::empty({0}, options.device(device));
@@ -107,7 +112,9 @@ RasterizeGaussiansCUDA(
 		out_color.contiguous().data<float>(),
 		out_invdepthptr,
 		radii.contiguous().data<int>(),
-		debug);
+		debug,
+		colormap_ptr,
+        colormap_size);
   }
   return std::make_tuple(rendered, out_color, radii, geomBuffer, binningBuffer, imgBuffer, out_invdepth);
 }
@@ -134,8 +141,17 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 	const int R,
 	const torch::Tensor& binningBuffer,
 	const torch::Tensor& imageBuffer,
-	const bool debug) 
+	const bool debug,
+	const torch::Tensor& colormap,
+	const torch::Tensor& derivatives) 
 {
+  // Prepare colormap pointer
+  const int colormap_size = colormap.size(0);
+
+  // Prepare derivatives pointer
+  const int derivatives_size = derivatives.size(0);
+  const float* derivatives_ptr = derivatives.contiguous().data<float>();
+
   const int P = means3D.size(0);
   const int H = dL_dout_color.size(1);
   const int W = dL_dout_color.size(2);
@@ -196,7 +212,10 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 	  dL_dscales.contiguous().data<float>(),
 	  dL_drotations.contiguous().data<float>(),
 	  dL_dvalue.contiguous().data<float>(),
-	  debug);
+	  debug,
+      colormap_size,
+	  derivatives_ptr,
+	  derivatives_size);
   }
 
   return std::make_tuple(dL_dmeans2D, dL_dopacity, dL_dmeans3D, dL_dcov3D, dL_dscales, dL_drotations, dL_dvalue);

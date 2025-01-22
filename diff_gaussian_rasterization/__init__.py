@@ -58,7 +58,6 @@ class _RasterizeGaussians(torch.autograd.Function):
         cov3Ds_precomp,
         raster_settings,
     ):
-
         # Restructure arguments the way that the C++ lib expects them
         args = (
             raster_settings.bg,
@@ -78,6 +77,7 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.campos,
             raster_settings.prefiltered,
             raster_settings.debug,
+            raster_settings.colormap,
         )
 
         # Invoke C++/CUDA rasterizer
@@ -104,7 +104,6 @@ class _RasterizeGaussians(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_out_color, _, grad_out_depth):
-
         # Restore necessary values from context
         num_rendered = ctx.num_rendered
         raster_settings = ctx.raster_settings
@@ -144,6 +143,8 @@ class _RasterizeGaussians(torch.autograd.Function):
             binningBuffer,
             imgBuffer,
             raster_settings.debug,
+            raster_settings.colormap,
+            raster_settings.derivatives,
         )
 
         # Compute gradients for relevant tensors by invoking backward method
@@ -183,6 +184,8 @@ class GaussianRasterizationSettings(NamedTuple):
     campos: torch.Tensor
     prefiltered: bool
     debug: bool
+    colormap: torch.Tensor = None
+    derivatives: torch.Tensor = None
 
 
 class GaussianRasterizer(nn.Module):
@@ -210,8 +213,10 @@ class GaussianRasterizer(nn.Module):
         values=None,
         cov3D_precomp=None,
     ):
-
         raster_settings = self.raster_settings
+
+        if raster_settings.colormap is None:
+            raise Exception("Colormap is not set in the raster settings!")
 
         if ((scales is None or rotations is None) and cov3D_precomp is None) or (
             (scales is not None or rotations is not None) and cov3D_precomp is not None
@@ -219,11 +224,9 @@ class GaussianRasterizer(nn.Module):
             raise Exception(
                 "Please provide exactly one of either scale/rotation pair or precomputed 3D covariance!"
             )
-        
-        if (values is None):
-            raise Exception(
-                "Please provide scalar values for each Gaussian!"
-            )
+
+        if values is None:
+            raise Exception("Please provide scalar values for each Gaussian!")
 
         if scales is None:
             scales = torch.Tensor([])

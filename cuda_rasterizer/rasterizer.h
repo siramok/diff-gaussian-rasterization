@@ -50,7 +50,9 @@ namespace CudaRasterizer
 			float* out_color,
 			float* depth,
 			int* radii = nullptr,
-			bool debug = false);
+			bool debug = false,
+			const float* colormap = nullptr,
+			int colormap_size = 0);
 
 		static void backward(
 			const int P, int R,
@@ -83,7 +85,10 @@ namespace CudaRasterizer
 			float* dL_dscale,
 			float* dL_drot,
 			float* dL_dvalue,
-			bool debug);
+			bool debug,
+			int colormap_size = 0,
+			const float* derivatives = nullptr,
+			int derivatives_size = 0);
 	};
 };
 

@@ -17,43 +17,29 @@ namespace cg = cooperative_groups;
 
 // Forward method for converting the values
 // of each Gaussian to a simple RGB color.
-__device__ glm::vec3 computeColorFromValues(int idx, const float* values, bool* clamped)
+__device__ glm::vec3 computeColorFromValues(
+    int idx, const float* values, const float* colormap, int colormap_size, bool* clamped)
 {
-	// Simple linear transfer function,
-	// assume values clamped to [0,1]
-	glm::vec3 result = values[idx] * glm::vec3(1.0, 0.0, 0.0) + glm::vec3(0.0, 0.0, 1.0);
+    glm::vec3 result;
 
-	// Test rainbow (red, yellow, green, cyan, blue, pink)
-	float value = glm::clamp(float(values[idx]), 0.0f, 1.0f);
-    if (value <= 0.2) {  // red to yellow
-        result.r = 1.0;
-        result.g = value * 5;
-        result.b = 0;
-    } else if (value <= 0.4) {  // yellow to green
-        result.r = (0.4 - value) * 5;
-        result.g = 1.0;
-        result.b = 0;
-    } else if (value <= 0.6) {  // green to cyan
-        result.r = 0;
-        result.g = 1.0;
-        result.b = (value - 0.4) * 5;
-    } else if (value <= 0.8) {  // cyan to blue
-        result.r = 0;
-        result.g = (0.8 - value) * 5;
-        result.b = 1.0;
-    } else {  // blue to pink
-        result.r = (value - 0.8) * 5;
-        result.g = 0;
-        result.b = 1.0;
-    }
+    float scalar_value = values[idx];
+    int colormap_index = min(max(int(scalar_value * (colormap_size - 1)), 0), colormap_size - 1);
 
-	// RGB colors are clamped to [0,1]. If values are
-	// clamped, we need to keep track of this for the backward pass.
-	clamped[3 * idx + 0] = (result.x < 0) || (result.x > 1.0);
-	clamped[3 * idx + 1] = (result.y < 0) || (result.y > 1.0);
-	clamped[3 * idx + 2] = (result.z < 0) || (result.z > 1.0);
-	return glm::clamp(result, 0.0f, 1.0f);
+    // Fetch RGB values from the colormap
+    result = {
+        colormap[colormap_index * 4 + 0], // R
+        colormap[colormap_index * 4 + 1], // G
+        colormap[colormap_index * 4 + 2]  // B
+    };
+
+    // RGB colors are clamped to [0,1]. If values are clamped, we need to keep track of this for the backward pass.
+    clamped[3 * idx + 0] = (result.x < 0) || (result.x > 1.0);
+    clamped[3 * idx + 1] = (result.y < 0) || (result.y > 1.0);
+    clamped[3 * idx + 2] = (result.z < 0) || (result.z > 1.0);
+
+    return glm::clamp(result, 0.0f, 1.0f);
 }
+
 
 // Forward version of 2D covariance matrix computation
 __device__ float3 computeCov2D(const float3& mean, float focal_x, float focal_y, float tan_fovx, float tan_fovy, const float* cov3D, const float* viewmatrix)
@@ -157,7 +143,9 @@ __global__ void preprocessCUDA(int P,
 	float4* conic_opacity,
 	const dim3 grid,
 	uint32_t* tiles_touched,
-	bool prefiltered)
+	bool prefiltered,
+	const float* colormap,
+	int colormap_size)
 {
 	auto idx = cg::this_grid().thread_rank();
 	if (idx >= P)
@@ -228,7 +216,7 @@ __global__ void preprocessCUDA(int P,
 		return;
 
 	// Convert values to color
-	glm::vec3 result = computeColorFromValues(idx, values, clamped);
+	glm::vec3 result = computeColorFromValues(idx, values, colormap, colormap_size, clamped);
 	rgb[idx * C + 0] = result.x;
 	rgb[idx * C + 1] = result.y;
 	rgb[idx * C + 2] = result.z;
@@ -430,7 +418,9 @@ void FORWARD::preprocess(int P,
 	float4* conic_opacity,
 	const dim3 grid,
 	uint32_t* tiles_touched,
-	bool prefiltered)
+	bool prefiltered,
+	const float* colormap,
+	int colormap_size)
 {
 	preprocessCUDA<NUM_CHANNELS> << <(P + 255) / 256, 256 >> > (
 		P,
@@ -456,6 +446,8 @@ void FORWARD::preprocess(int P,
 		conic_opacity,
 		grid,
 		tiles_touched,
-		prefiltered
+		prefiltered,
+		colormap,
+		colormap_size
 		);
 }

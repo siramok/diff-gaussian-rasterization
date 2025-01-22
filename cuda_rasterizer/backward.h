@@ -65,7 +65,10 @@ namespace BACKWARD
 		float* dL_dcov3D,
 		glm::vec3* dL_dscale,
 		glm::vec4* dL_drot,
-		float* dL_dvalue);
+		float* dL_dvalue,
+		int colormap_size,
+		const float* derivatives,
+		int derivatives_size);
 }
 
 #endif

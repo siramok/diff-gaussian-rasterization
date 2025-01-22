@@ -20,47 +20,31 @@ __device__ __forceinline__ float sq(float x) { return x * x; }
 
 // Backward pass for conversion of values to RGB for
 // each Gaussian.
-__device__ void computeColorFromValues(int idx, const float* values, const bool* clamped, const glm::vec3* dL_dcolor, float* dL_dvalues)
-{
-	// In the forward pass, we had: 
-	// RGB = vec3(1.0, 0.0, 0.0) * value + vec3(0.0, 0.0, 1.0)
-    // So dRGB/dvalue = vec3(1.0, 0.0, 0.0)
-    // glm::vec3 dRGB_dvalue = glm::vec3(1.0, 0.0, 0.0);
+__device__ void computeColorFromValues(
+    int idx, 
+    const float* values, 
+    const bool* clamped, 
+    const glm::vec3* dL_dcolor, 
+    float* dL_dvalues,
+    int colormap_size,
+	const float* derivatives,
+	int derivatives_size
+) {
+    glm::vec3 dL_dRGB = dL_dcolor[idx];
+    dL_dRGB.x *= clamped[3 * idx + 0] ? 0 : 1;
+    dL_dRGB.y *= clamped[3 * idx + 1] ? 0 : 1;
+    dL_dRGB.z *= clamped[3 * idx + 2] ? 0 : 1;
 
-	// Use PyTorch rule for clamping: if clamping was applied,
-	// gradient becomes 0.
-	glm::vec3 dL_dRGB = dL_dcolor[idx];
-	dL_dRGB.x *= clamped[3 * idx + 0] ? 0 : 1;
-	dL_dRGB.y *= clamped[3 * idx + 1] ? 0 : 1;
-	dL_dRGB.z *= clamped[3 * idx + 2] ? 0 : 1;
+    float value = values[idx];
+    int colormap_index = min(max(int(value * (colormap_size - 1)), 0), colormap_size - 1);
 
-	float value = values[idx];
-    glm::vec3 dRGB_dvalue(0.0f);
+    float dR_dvalue = derivatives[colormap_index * 3 + 0];
+    float dG_dvalue = derivatives[colormap_index * 3 + 1];
+    float dB_dvalue = derivatives[colormap_index * 3 + 2];
 
-    // Compute dRGB/dvalue based on which piece of the function applies
-    if (value < 0.0f || value > 1.0f) {
-        // gradient is zero if value is clamped
-        dRGB_dvalue = glm::vec3(0.0f);
-    } else if (value <= 0.2f) {  // red to yellow
-        dRGB_dvalue = glm::vec3(0.0f, 5.0f, 0.0f);
-    } else if (value <= 0.4f) {  // yellow to green
-        dRGB_dvalue = glm::vec3(-5.0f, 0.0f, 0.0f);
-    } else if (value <= 0.6f) {  // green to cyan
-        dRGB_dvalue = glm::vec3(0.0f, 0.0f, 5.0f);
-    } else if (value <= 0.8f) {  // cyan to blue
-        dRGB_dvalue = glm::vec3(0.0f, -5.0f, 0.0f);
-    } else {  // blue to pink
-        dRGB_dvalue = glm::vec3(5.0f, 0.0f, 0.0f);
-    }
-
-    // Compute dL/dvalue using the chain rule
-    float dL_dvalue = 
-        dL_dRGB.x * dRGB_dvalue.x +
-        dL_dRGB.y * dRGB_dvalue.y +
-        dL_dRGB.z * dRGB_dvalue.z;
-
-	dL_dvalues[idx] = dL_dvalue;
+    dL_dvalues[idx] = dL_dRGB.x * dR_dvalue + dL_dRGB.y * dG_dvalue + dL_dRGB.z * dB_dvalue;
 }
+
 
 // Backward version of INVERSE 2D covariance matrix computation
 // (due to length launched as separate kernel before other 
@@ -331,7 +315,10 @@ __global__ void preprocessCUDA(
 	glm::vec3* dL_dscale,
 	glm::vec4* dL_drot,
 	float* dL_dvalue,
-	float* dL_dopacity)
+	float* dL_dopacity,
+    int colormap_size,
+	const float* derivatives,
+	int derivatives_size)
 {
 	auto idx = cg::this_grid().thread_rank();
 	if (idx >= P || !(radii[idx] > 0))
@@ -358,7 +345,7 @@ __global__ void preprocessCUDA(
 
 	// Compute gradient updates due to computing colors from values
 	if (values)
-		computeColorFromValues(idx, values, clamped, (glm::vec3*)dL_dcolor, dL_dvalue);
+    	computeColorFromValues(idx, values, clamped, (glm::vec3*)dL_dcolor, dL_dvalue, colormap_size, derivatives, derivatives_size);
 
 	// Compute gradient updates due to computing covariance from scale/rotation
 	if (scales)
@@ -579,7 +566,10 @@ void BACKWARD::preprocess(
 	float* dL_dcov3D,
 	glm::vec3* dL_dscale,
 	glm::vec4* dL_drot,
-	float* dL_dvalue)
+	float* dL_dvalue,
+    int colormap_size,
+	const float* derivatives,
+	int derivatives_size)
 {
 	// Propagate gradients for the path of 2D conic matrix computation. 
 	// Somewhat long, thus it is its own kernel rather than being part of 
@@ -623,7 +613,10 @@ void BACKWARD::preprocess(
 		dL_dscale,
 		dL_drot,
 		dL_dvalue,
-		dL_dopacity);
+		dL_dopacity,
+    	colormap_size,
+		derivatives,
+		derivatives_size);
 }
 
 void BACKWARD::render(
