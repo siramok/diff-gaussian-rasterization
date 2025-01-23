@@ -52,7 +52,9 @@ namespace CudaRasterizer
 			int* radii = nullptr,
 			bool debug = false,
 			const float* colormap = nullptr,
-			int colormap_size = 0);
+			int colormap_size = 0,
+			const float* opacitymap = nullptr,
+			int opacitymap_size = 0);
 
 		static void backward(
 			const int P, int R,

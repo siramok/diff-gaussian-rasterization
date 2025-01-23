@@ -78,6 +78,7 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.prefiltered,
             raster_settings.debug,
             raster_settings.colormap,
+            raster_settings.opacitymap
         )
 
         # Invoke C++/CUDA rasterizer
@@ -145,6 +146,8 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.debug,
             raster_settings.colormap,
             raster_settings.derivatives,
+            raster_settings.opacitymap,
+            raster_settings.opac_derivatives,
         )
 
         # Compute gradients for relevant tensors by invoking backward method
@@ -186,6 +189,8 @@ class GaussianRasterizationSettings(NamedTuple):
     debug: bool
     colormap: torch.Tensor = None
     derivatives: torch.Tensor = None
+    opacitymap: torch.Tensor = None
+    opac_derivatives: torch.Tensor = None
 
 
 class GaussianRasterizer(nn.Module):
@@ -217,6 +222,9 @@ class GaussianRasterizer(nn.Module):
 
         if raster_settings.colormap is None:
             raise Exception("Colormap is not set in the raster settings!")
+        
+        if raster_settings.opacitymap is None:
+            raise Exception("Opacity map is not set in the raster settings!")
 
         if ((scales is None or rotations is None) and cov3D_precomp is None) or (
             (scales is not None or rotations is not None) and cov3D_precomp is not None

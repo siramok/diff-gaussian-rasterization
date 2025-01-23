@@ -219,7 +219,9 @@ int CudaRasterizer::Rasterizer::forward(
 	int* radii,
 	bool debug,
 	const float* colormap,
-	int colormap_size)
+	int colormap_size,
+	const float* opacitymap,
+	int opacitymap_size)
 {
 	const float focal_y = height / (2.0f * tan_fovy);
 	const float focal_x = width / (2.0f * tan_fovx);
@@ -267,7 +269,9 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.tiles_touched,
 		prefiltered,
 		colormap,
-        colormap_size
+        colormap_size,
+		opacitymap,
+		opacitymap_size
 	), debug)
 
 	// Compute prefix sum over full list of touched tile counts by Gaussians
