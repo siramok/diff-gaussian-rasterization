@@ -52,6 +52,27 @@ __device__ glm::vec3 computeColorFromValues(
     return glm::clamp(result, 0.0f, 1.0f);
 }
 
+// Forward method for converting the values
+// of each Gaussian to opacity.
+__device__ float computeOpacityFromValues(
+    int idx, const float* values, const float* opacitymap, int opacitymap_size)
+{
+    float scalar_value = values[idx];
+    float scaled_value = scalar_value * (opacitymap_size - 1);
+    
+    // Get the lower and upper indices for interpolation
+    int lower_idx = min(max(int(floor(scaled_value)), 0), opacitymap_size - 2);
+    int upper_idx = lower_idx + 1;
+    
+    // Calculate interpolation factor (0 to 1)
+    float frac = scaled_value - floor(scaled_value);
+
+    // Interpolation between colormap entries
+    float result = lerp(opacitymap[lower_idx], opacitymap[upper_idx], frac);
+
+    return result;
+}
+
 // Forward version of 2D covariance matrix computation
 __device__ float3 computeCov2D(const float3& mean, float focal_x, float focal_y, float tan_fovx, float tan_fovy, const float* cov3D, const float* viewmatrix)
 {
@@ -156,7 +177,9 @@ __global__ void preprocessCUDA(int P,
 	uint32_t* tiles_touched,
 	bool prefiltered,
 	const float* colormap,
-	int colormap_size)
+	int colormap_size,
+	const float* opacitymap,
+	int opacitymap_size)
 {
 	auto idx = cg::this_grid().thread_rank();
 	if (idx >= P)
@@ -237,7 +260,7 @@ __global__ void preprocessCUDA(int P,
 	radii[idx] = my_radius;
 	points_xy_image[idx] = point_image;
 	// Inverse 2D covariance and opacity neatly pack into one float4
-	float opacity = opacities[idx];
+	float opacity = computeOpacityFromValues(idx, values, opacitymap, opacitymap_size);
 
 #ifdef DGR_FIX_AA
 	conic_opacity[idx] = { conic.x, conic.y, conic.z, opacity * h_convolution_scaling };
@@ -431,7 +454,9 @@ void FORWARD::preprocess(int P,
 	uint32_t* tiles_touched,
 	bool prefiltered,
 	const float* colormap,
-	int colormap_size)
+	int colormap_size,
+	const float* opacitymap,
+	int opacitymap_size)
 {
 	preprocessCUDA<NUM_CHANNELS> << <(P + 255) / 256, 256 >> > (
 		P,
@@ -459,6 +484,8 @@ void FORWARD::preprocess(int P,
 		tiles_touched,
 		prefiltered,
 		colormap,
-		colormap_size
+		colormap_size,
+		opacitymap,
+		opacitymap_size
 		);
 }

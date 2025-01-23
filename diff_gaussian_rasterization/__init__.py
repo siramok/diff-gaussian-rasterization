@@ -78,6 +78,7 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.prefiltered,
             raster_settings.debug,
             raster_settings.colormap,
+            raster_settings.opacitymap
         )
 
         # Invoke C++/CUDA rasterizer
@@ -186,6 +187,8 @@ class GaussianRasterizationSettings(NamedTuple):
     debug: bool
     colormap: torch.Tensor = None
     derivatives: torch.Tensor = None
+    opacitymap: torch.Tensor = None
+    opac_derivatives: torch.Tensor = None
 
 
 class GaussianRasterizer(nn.Module):

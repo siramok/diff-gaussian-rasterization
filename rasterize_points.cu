@@ -51,7 +51,8 @@ RasterizeGaussiansCUDA(
 	const torch::Tensor& campos,
 	const bool prefiltered,
 	const bool debug,
-	const torch::Tensor& colormap)
+	const torch::Tensor& colormap,
+	const torch::Tensor& opacitymap)
 {
   if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
     AT_ERROR("means3D must have dimensions (num_points, 3)");
@@ -76,6 +77,8 @@ RasterizeGaussiansCUDA(
   // Prepare colormap pointer
   const int colormap_size = colormap.size(0);
   const float* colormap_ptr = colormap.data_ptr<float>();
+  const int opacitymap_size = opacitymap.size(0);
+  const float* opacitymap_ptr = opacitymap.data_ptr<float>();
 
   torch::Device device(torch::kCUDA);
   torch::TensorOptions options(torch::kByte);
@@ -114,7 +117,9 @@ RasterizeGaussiansCUDA(
 		radii.contiguous().data<int>(),
 		debug,
 		colormap_ptr,
-        colormap_size);
+        colormap_size,
+		opacitymap_ptr,
+        opacitymap_size);
   }
   return std::make_tuple(rendered, out_color, radii, geomBuffer, binningBuffer, imgBuffer, out_invdepth);
 }
