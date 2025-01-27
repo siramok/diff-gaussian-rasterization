@@ -51,7 +51,8 @@ RasterizeGaussiansCUDA(
 	const torch::Tensor& campos,
 	const bool prefiltered,
 	const bool debug,
-	const torch::Tensor& colormap)
+	const int colormap_id,
+	const torch::Tensor& colormap_tables)
 {
   if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
     AT_ERROR("means3D must have dimensions (num_points, 3)");
@@ -73,9 +74,9 @@ RasterizeGaussiansCUDA(
 
   torch::Tensor radii = torch::full({P}, 0, means3D.options().dtype(torch::kInt32));
   
-  // Prepare colormap pointer
-  const int colormap_size = colormap.size(0);
-  const float* colormap_ptr = colormap.data_ptr<float>();
+  // Prepare colormap pointer for specific ID
+  const int colormap_size = colormap_tables.size(1);
+  const float* colormap_ptr = colormap_tables.data_ptr<float>() + colormap_id * colormap_size * 3;
 
   torch::Device device(torch::kCUDA);
   torch::TensorOptions options(torch::kByte);
@@ -142,15 +143,13 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 	const torch::Tensor& binningBuffer,
 	const torch::Tensor& imageBuffer,
 	const bool debug,
-	const torch::Tensor& colormap,
-	const torch::Tensor& derivatives) 
+	const int colormap_id,
+	const torch::Tensor& colormap_tables,
+	const torch::Tensor& derivative_tables) 
 {
-  // Prepare colormap pointer
-  const int colormap_size = colormap.size(0);
-
   // Prepare derivatives pointer
-  const int derivatives_size = derivatives.size(0);
-  const float* derivatives_ptr = derivatives.contiguous().data<float>();
+  const int derivatives_size = derivative_tables.size(1);
+  const float* derivatives_ptr = derivative_tables.data_ptr<float>() + colormap_id * derivatives_size * 3;
 
   const int P = means3D.size(0);
   const int H = dL_dout_color.size(1);
@@ -213,7 +212,7 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 	  dL_drotations.contiguous().data<float>(),
 	  dL_dvalue.contiguous().data<float>(),
 	  debug,
-      colormap_size,
+      derivatives_size,
 	  derivatives_ptr,
 	  derivatives_size);
   }

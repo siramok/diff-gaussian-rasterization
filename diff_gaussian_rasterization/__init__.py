@@ -9,6 +9,7 @@
 # For inquiries contact  george.drettakis@inria.fr
 #
 
+from turtle import color
 from typing import NamedTuple
 import torch.nn as nn
 import torch
@@ -77,7 +78,8 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.campos,
             raster_settings.prefiltered,
             raster_settings.debug,
-            raster_settings.colormap,
+            raster_settings.colormap_id,
+            raster_settings.colormap_tables,
         )
 
         # Invoke C++/CUDA rasterizer
@@ -143,8 +145,9 @@ class _RasterizeGaussians(torch.autograd.Function):
             binningBuffer,
             imgBuffer,
             raster_settings.debug,
-            raster_settings.colormap,
-            raster_settings.derivatives,
+            raster_settings.colormap_id,
+            raster_settings.colormap_tables,
+            raster_settings.derivative_tables,
         )
 
         # Compute gradients for relevant tensors by invoking backward method
@@ -184,8 +187,9 @@ class GaussianRasterizationSettings(NamedTuple):
     campos: torch.Tensor
     prefiltered: bool
     debug: bool
-    colormap: torch.Tensor = None
-    derivatives: torch.Tensor = None
+    colormap_id: int
+    colormap_tables: torch.Tensor = None
+    derivative_tables: torch.Tensor = None
 
 
 class GaussianRasterizer(nn.Module):
@@ -215,7 +219,7 @@ class GaussianRasterizer(nn.Module):
     ):
         raster_settings = self.raster_settings
 
-        if raster_settings.colormap is None:
+        if raster_settings.colormap_tables is None:
             raise Exception("Colormap is not set in the raster settings!")
 
         if ((scales is None or rotations is None) and cov3D_precomp is None) or (
