@@ -89,8 +89,11 @@ namespace CudaRasterizer
 			float* dL_dvalue,
 			bool debug,
 			int colormap_size = 0,
+			int opacitymap_size = 0,
 			const float* derivatives = nullptr,
-			int derivatives_size = 0);
+			int derivatives_size = 0,
+			const float* opac_derivatives = nullptr,
+			int opac_derivatives_size = 0);
 	};
 };
 

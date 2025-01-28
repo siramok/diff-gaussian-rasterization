@@ -61,7 +61,9 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 	const torch::Tensor& imageBuffer,
 	const bool debug,
 	const torch::Tensor& colormap,
-	const torch::Tensor& derivatives);
+	const torch::Tensor& derivatives,
+	const torch::Tensor& opacitymap,
+	const torch::Tensor& opac_derivatives);
 		
 torch::Tensor markVisible(
 		torch::Tensor& means3D,

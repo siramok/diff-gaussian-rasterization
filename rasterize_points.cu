@@ -148,14 +148,19 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 	const torch::Tensor& imageBuffer,
 	const bool debug,
 	const torch::Tensor& colormap,
-	const torch::Tensor& derivatives) 
+	const torch::Tensor& derivatives,
+	const torch::Tensor& opacitymap,
+	const torch::Tensor& opac_derivatives) 
 {
   // Prepare colormap pointer
   const int colormap_size = colormap.size(0);
+  const int opacitymap_size = opacitymap.size(0);
 
   // Prepare derivatives pointer
   const int derivatives_size = derivatives.size(0);
   const float* derivatives_ptr = derivatives.contiguous().data<float>();
+  const int opac_derivatives_size = opac_derivatives.size(0);
+  const float* opac_derivatives_ptr = opac_derivatives.contiguous().data<float>();
 
   const int P = means3D.size(0);
   const int H = dL_dout_color.size(1);
@@ -219,8 +224,11 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 	  dL_dvalue.contiguous().data<float>(),
 	  debug,
       colormap_size,
+	  opacitymap_size,
 	  derivatives_ptr,
-	  derivatives_size);
+	  derivatives_size,
+	  opac_derivatives_ptr,
+	  opac_derivatives_size);
   }
 
   return std::make_tuple(dL_dmeans2D, dL_dopacity, dL_dmeans3D, dL_dcov3D, dL_dscales, dL_drotations, dL_dvalue);

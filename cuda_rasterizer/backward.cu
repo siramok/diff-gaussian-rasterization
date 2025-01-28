@@ -45,6 +45,21 @@ __device__ void computeColorFromValues(
     dL_dvalues[idx] = dL_dRGB.x * dR_dvalue + dL_dRGB.y * dG_dvalue + dL_dRGB.z * dB_dvalue;
 }
 
+// Backward method for converting the values
+// of each Gaussian to opacity.
+__device__ float computeOpacityFromValues(
+	int idx, 
+    const float* values, 
+    const float* dL_dopacity, 
+    float* dL_dvalues,
+	const float* opac_derivatives,
+	int opac_derivatives_size
+){
+	float value = values[idx];
+	int opacitymap_index = min(max(int(value * (opac_derivatives_size - 1)), 0), opac_derivatives_size - 1);
+	dL_dvalues[idx] += opac_derivatives[opacitymap_index] * dL_dopacity[idx];
+}
+
 
 // Backward version of INVERSE 2D covariance matrix computation
 // (due to length launched as separate kernel before other 
@@ -56,7 +71,7 @@ __global__ void computeCov2DCUDA(int P,
 	const float h_x, float h_y,
 	const float tan_fovx, float tan_fovy,
 	const float* view_matrix,
-	const float* opacities,
+	const float* opac,
 	const float* dL_dconics,
 	float* dL_dopacity,
 	const float* dL_dinvdepth,
@@ -117,7 +132,7 @@ __global__ void computeCov2DCUDA(int P,
 	const float det_cov_plus_h_cov = c_xx * c_yy - c_xy * c_xy;
 	const float h_convolution_scaling = sqrt(max(0.000025f, det_cov / det_cov_plus_h_cov)); // max for numerical stability
 	const float dL_dopacity_v = dL_dopacity[idx];
-	const float d_h_convolution_scaling = dL_dopacity_v * opacities[idx];
+	const float d_h_convolution_scaling = dL_dopacity_v * opac[idx];
 	dL_dopacity[idx] = dL_dopacity_v * h_convolution_scaling;
 	const float d_inside_root = (det_cov / det_cov_plus_h_cov) <= 0.000025f ? 0.f : d_h_convolution_scaling / (2 * h_convolution_scaling);
 #else
@@ -318,7 +333,9 @@ __global__ void preprocessCUDA(
 	float* dL_dopacity,
     int colormap_size,
 	const float* derivatives,
-	int derivatives_size)
+	int derivatives_size,
+	const float* opac_derivatives,
+	int opac_derivatives_size)
 {
 	auto idx = cg::this_grid().thread_rank();
 	if (idx >= P || !(radii[idx] > 0))
@@ -346,6 +363,7 @@ __global__ void preprocessCUDA(
 	// Compute gradient updates due to computing colors from values
 	if (values)
     	computeColorFromValues(idx, values, clamped, (glm::vec3*)dL_dcolor, dL_dvalue, colormap_size, derivatives, derivatives_size);
+		computeOpacityFromValues(idx, values, dL_dopacity, dL_dvalue, opac_derivatives, opac_derivatives_size);
 
 	// Compute gradient updates due to computing covariance from scale/rotation
 	if (scales)
@@ -546,7 +564,7 @@ void BACKWARD::preprocess(
 	const float3* means3D,
 	const int* radii,
 	const bool* clamped,
-	const float* opacities,
+	const float* opac,
 	const glm::vec3* scales,
 	const glm::vec4* rotations,
 	const float* values,
@@ -569,7 +587,9 @@ void BACKWARD::preprocess(
 	float* dL_dvalue,
     int colormap_size,
 	const float* derivatives,
-	int derivatives_size)
+	int derivatives_size,
+	const float* opac_derivatives,
+	int opac_derivatives_size)
 {
 	// Propagate gradients for the path of 2D conic matrix computation. 
 	// Somewhat long, thus it is its own kernel rather than being part of 
@@ -585,7 +605,7 @@ void BACKWARD::preprocess(
 		tan_fovx,
 		tan_fovy,
 		viewmatrix,
-		opacities,
+		opac,
 		dL_dconic,
 		dL_dopacity,
 		dL_dinvdepth,
@@ -616,7 +636,9 @@ void BACKWARD::preprocess(
 		dL_dopacity,
     	colormap_size,
 		derivatives,
-		derivatives_size);
+		derivatives_size,
+		opac_derivatives,
+		opac_derivatives_size);
 }
 
 void BACKWARD::render(

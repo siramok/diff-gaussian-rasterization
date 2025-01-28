@@ -173,6 +173,7 @@ __global__ void preprocessCUDA(int P,
 	float* cov3Ds,
 	float* rgb,
 	float4* conic_opacity,
+	float* opac,
 	const dim3 grid,
 	uint32_t* tiles_touched,
 	bool prefiltered,
@@ -261,6 +262,7 @@ __global__ void preprocessCUDA(int P,
 	points_xy_image[idx] = point_image;
 	// Inverse 2D covariance and opacity neatly pack into one float4
 	float opacity = computeOpacityFromValues(idx, values, opacitymap, opacitymap_size);
+	opac[idx] = opacity;
 
 #ifdef DGR_FIX_AA
 	conic_opacity[idx] = { conic.x, conic.y, conic.z, opacity * h_convolution_scaling };
@@ -450,6 +452,7 @@ void FORWARD::preprocess(int P,
 	float* cov3Ds,
 	float* rgb,
 	float4* conic_opacity,
+	float* opac,
 	const dim3 grid,
 	uint32_t* tiles_touched,
 	bool prefiltered,
@@ -480,6 +483,7 @@ void FORWARD::preprocess(int P,
 		cov3Ds,
 		rgb,
 		conic_opacity,
+		opac,
 		grid,
 		tiles_touched,
 		prefiltered,

@@ -68,7 +68,9 @@ namespace BACKWARD
 		float* dL_dvalue,
 		int colormap_size,
 		const float* derivatives,
-		int derivatives_size);
+		int derivatives_size,
+		const float* opac_derivatives,
+		int opac_derivatives_size);
 }
 
 #endif

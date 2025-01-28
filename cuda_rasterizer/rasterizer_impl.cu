@@ -162,6 +162,7 @@ CudaRasterizer::GeometryState CudaRasterizer::GeometryState::fromChunk(char*& ch
 	obtain(chunk, geom.cov3D, P * 6, 128);
 	obtain(chunk, geom.conic_opacity, P, 128);
 	obtain(chunk, geom.rgb, P * 3, 128);
+	obtain(chunk, geom.opac, P, 128);
 	obtain(chunk, geom.tiles_touched, P, 128);
 	cub::DeviceScan::InclusiveSum(nullptr, geom.scan_size, geom.tiles_touched, geom.tiles_touched, P);
 	obtain(chunk, geom.scanning_space, geom.scan_size, 128);
@@ -265,6 +266,7 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.cov3D,
 		geomState.rgb,
 		geomState.conic_opacity,
+		geomState.opac,
 		tile_grid,
 		geomState.tiles_touched,
 		prefiltered,
@@ -374,8 +376,11 @@ void CudaRasterizer::Rasterizer::backward(
 	float* dL_dvalue,
 	bool debug,
 	int colormap_size,
+	int opacitymap_size,
 	const float* derivatives,
-	int derivatives_size)
+	int derivatives_size,
+	const float* opac_derivatives,
+	int opac_derivatives_size)
 {
 	GeometryState geomState = GeometryState::fromChunk(geom_buffer, P);
 	BinningState binningState = BinningState::fromChunk(binning_buffer, R);
@@ -424,7 +429,7 @@ void CudaRasterizer::Rasterizer::backward(
 		(float3*)means3D,
 		radii,
 		geomState.clamped,
-		opacities,
+		geomState.opac,
 		(glm::vec3*)scales,
 		(glm::vec4*)rotations,
 		values,
@@ -447,5 +452,7 @@ void CudaRasterizer::Rasterizer::backward(
 		dL_dvalue,
     	colormap_size,
 		derivatives,
-		derivatives_size), debug);
+		derivatives_size,
+		opac_derivatives,
+		opac_derivatives_size), debug);
 }
