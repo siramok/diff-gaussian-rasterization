@@ -22,34 +22,39 @@ __device__ inline float lerp(float a, float b, float t) {
 
 // Forward method for converting the values
 // of each Gaussian to a simple RGB color.
-__device__ glm::vec3 computeColorFromValues(
-    int idx, const float* values, const float* colormap, int colormap_size, bool* clamped)
-{
-    glm::vec3 result;
+__device__ glm::vec3 computeColorFromValues(int idx, const float* values, const float* colormap, int colormap_size, bool* clamped) {
+    float val = values[idx];
+	int num_color_stops = colormap_size / 3;
+    float scaled_value = val * (num_color_stops - 1);
+    if (scaled_value < 0.0f) scaled_value = 0.0f;
+    if (scaled_value > (float)(colormap_size - 1)) scaled_value = (float)(colormap_size - 1);
 
-    float scalar_value = values[idx];
-    float scaled_value = scalar_value * (colormap_size - 1);
-    
-    // Get the lower and upper indices for interpolation
-    int lower_idx = min(max(int(floor(scaled_value)), 0), colormap_size - 2);
+    int lower_idx = (int)floorf(scaled_value);
+    float frac = scaled_value - (float)lower_idx;
+    if (lower_idx >= num_color_stops - 1) {
+        lower_idx = num_color_stops - 2;
+        frac = 1.0f;
+    }
     int upper_idx = lower_idx + 1;
-    
-    // Calculate interpolation factor (0 to 1)
-    float frac = scaled_value - floor(scaled_value);
 
-    // Interpolation between colormap entries
-    result = glm::vec3(
-        lerp(colormap[lower_idx * 3 + 0], colormap[upper_idx * 3 + 0], frac),
-        lerp(colormap[lower_idx * 3 + 1], colormap[upper_idx * 3 + 1], frac),
-        lerp(colormap[lower_idx * 3 + 2], colormap[upper_idx * 3 + 2], frac)
+    glm::vec3 result = glm::vec3(
+        lerp(colormap[3 * lower_idx + 0], colormap[3 * upper_idx + 0], frac),
+        lerp(colormap[3 * lower_idx + 1], colormap[3 * upper_idx + 1], frac),
+        lerp(colormap[3 * lower_idx + 2], colormap[3 * upper_idx + 2], frac)
     );
 
-    // RGB colors are clamped to [0,1]. If values are clamped, we need to keep track of this for the backward pass.
-    clamped[3 * idx + 0] = (result.x < 0) || (result.x > 1.0);
-    clamped[3 * idx + 1] = (result.y < 0) || (result.y > 1.0);
-    clamped[3 * idx + 2] = (result.z < 0) || (result.z > 1.0);
+    bool c0 = (result.x < 0.0f || result.x > 1.0f);
+    bool c1 = (result.y < 0.0f || result.y > 1.0f);
+    bool c2 = (result.z < 0.0f || result.z > 1.0f);
+    if (c0 || c1 || c2) {
+        result = glm::clamp(result, 0.0f, 1.0f);
+    }
 
-    return glm::clamp(result, 0.0f, 1.0f);
+    clamped[3 * idx + 0] = c0;
+    clamped[3 * idx + 1] = c1;
+    clamped[3 * idx + 2] = c2;
+
+    return result;
 }
 
 // Forward version of 2D covariance matrix computation
