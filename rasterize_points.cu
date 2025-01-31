@@ -76,7 +76,7 @@ RasterizeGaussiansCUDA(
   
   // Prepare colormap pointer for specific ID
   const int colormap_size = colormap_tables.size(1);
-  const float* colormap_ptr = colormap_tables.data_ptr<float>() + colormap_id * colormap_size;
+  const float* colormap_ptr = colormap_tables.data_ptr<float>() + colormap_id * colormap_size * 3;
 
   torch::Device device(torch::kCUDA);
   torch::TensorOptions options(torch::kByte);
@@ -149,7 +149,7 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 {
   // Prepare derivatives pointer
   const int derivatives_size = derivative_tables.size(1);
-  const float* derivatives_ptr = derivative_tables.data_ptr<float>() + colormap_id * derivatives_size;
+  const float* derivatives_ptr = derivative_tables.data_ptr<float>() + colormap_id * derivatives_size * 3;
 
   const int P = means3D.size(0);
   const int H = dL_dout_color.size(1);

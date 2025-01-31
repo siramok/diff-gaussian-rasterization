@@ -20,33 +20,29 @@ __device__ __forceinline__ float sq(float x) { return x * x; }
 
 // Backward pass for conversion of values to RGB for
 // each Gaussian.
-__device__ void computeColorFromValues(int idx, const float* values, const bool* clamped, const glm::vec3* dL_dcolor, float* dL_dvalues, int colormap_size, const float* derivatives, int derivatives_size) {
+__device__ void computeColorFromValues(
+    int idx, 
+    const float* values, 
+    const bool* clamped, 
+    const glm::vec3* dL_dcolor, 
+    float* dL_dvalues,
+    int colormap_size,
+	const float* derivatives,
+	int derivatives_size
+) {
     glm::vec3 dL_dRGB = dL_dcolor[idx];
-    if (clamped[3 * idx + 0]) dL_dRGB.x = 0.0f;
-    if (clamped[3 * idx + 1]) dL_dRGB.y = 0.0f;
-    if (clamped[3 * idx + 2]) dL_dRGB.z = 0.0f;
+    dL_dRGB.x *= clamped[3 * idx + 0] ? 0 : 1;
+    dL_dRGB.y *= clamped[3 * idx + 1] ? 0 : 1;
+    dL_dRGB.z *= clamped[3 * idx + 2] ? 0 : 1;
 
-    float val = values[idx];
-    int num_color_stops = colormap_size / 3;
-    float scaled_value = val * (num_color_stops - 1);
-    if (scaled_value < 0.0f) scaled_value = 0.0f;
-    if (scaled_value > (float)(num_color_stops - 1)) scaled_value = (float)(num_color_stops - 1);
+    float value = values[idx];
+    int colormap_index = min(max(int(value * (colormap_size - 1)), 0), colormap_size - 1);
 
-    int lower_idx = (int)floorf(scaled_value);
-    float frac = scaled_value - (float)lower_idx;
-    if (lower_idx >= num_color_stops - 1) {
-        lower_idx = num_color_stops - 2;
-        frac = 1.0f;
-    }
+    float dR_dvalue = derivatives[colormap_index * 3 + 0];
+    float dG_dvalue = derivatives[colormap_index * 3 + 1];
+    float dB_dvalue = derivatives[colormap_index * 3 + 2];
 
-    float dR_dvalue = derivatives[3 * lower_idx + 0];
-    float dG_dvalue = derivatives[3 * lower_idx + 1];
-    float dB_dvalue = derivatives[3 * lower_idx + 2];
-
-    dL_dvalues[idx] =
-        dL_dRGB.x * dR_dvalue +
-        dL_dRGB.y * dG_dvalue +
-        dL_dRGB.z * dB_dvalue;
+    dL_dvalues[idx] = dL_dRGB.x * dR_dvalue + dL_dRGB.y * dG_dvalue + dL_dRGB.z * dB_dvalue;
 }
 
 
