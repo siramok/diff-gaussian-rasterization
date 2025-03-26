@@ -196,11 +196,6 @@ __global__ void preprocessCUDA(int P,
 	if (!in_frustum(idx, orig_points, viewmatrix, projmatrix, prefiltered, p_view))
 		return;
 
-	// Perform opacity culling.
-	float opacity = computeOpacityFromValues(idx, values, opacitymap, opacitymap_size);
-	if (opacity < 0.0001)
-		return;
-
 	// Transform point by projecting
 	float3 p_orig = { orig_points[3 * idx], orig_points[3 * idx + 1], orig_points[3 * idx + 2] };
 	float4 p_hom = transformPoint4x4(p_orig, projmatrix);
@@ -266,6 +261,7 @@ __global__ void preprocessCUDA(int P,
 	radii[idx] = my_radius;
 	points_xy_image[idx] = point_image;
 	// Inverse 2D covariance and opacity neatly pack into one float4
+	float opacity = computeOpacityFromValues(idx, values, opacitymap, opacitymap_size);
 	opac[idx] = opacity;
 
 #ifdef DGR_FIX_AA
